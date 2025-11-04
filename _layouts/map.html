@@ -1,7 +1,75 @@
 ---
-# Default leaflet map page
+# Default Mapbox map page
 layout: default
-custom-foot: js/map-js.html
+custom-foot: ''
 ---
 <h2 class="visually-hidden">Map of Collection Items</h2>
-<div id="map"></div>
+<div id="map" style="position:relative; width:100%; height:75vh;"></div>
+
+<!-- Mapbox GL JS -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.20.1/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.20.1/mapbox-gl.js"></script>
+
+<script>
+  // Use site.mapbox_access_token if set in _config.yml; fall back to a placeholder
+  const MAPBOX_ACCESS_TOKEN = {{ site.mapbox_access_token | default: "'<YOUR_MAPBOX_ACCESS_TOKEN>'" }};
+
+  if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === '<YOUR_MAPBOX_ACCESS_TOKEN>' ) {
+    console.warn('Mapbox access token is missing. Add mapbox_access_token to _config.yml or replace the placeholder.');
+  }
+
+  mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+
+  // Center roughly on Manhattan
+  const manhattanCenter = [-73.9712, 40.7831];
+
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: manhattanCenter,
+    zoom: 12.2
+  });
+
+  map.addControl(new mapboxgl.NavigationControl());
+
+  // Add marker and popup example
+  new mapboxgl.Marker({ color: '#e74c3c' })
+    .setLngLat([-73.9855, 40.7580])
+    .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Times Square, Manhattan'))
+    .addTo(map);
+
+  // If your collection items include latitude/longitude in front matter (lat, lng),
+  // this will add markers for each page in the collection when the Liquid is rendered.
+</script>
+
+{% raw %}
+<script>
+  // Add markers from collection items rendered by Jekyll
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.JEKYLL_COLLECTION_ITEMS !== 'undefined' && Array.isArray(window.JEKYLL_COLLECTION_ITEMS)) {
+      window.JEKYLL_COLLECTION_ITEMS.forEach(function (item) {
+        if (item.lat && item.lng) {
+          new mapboxgl.Marker()
+            .setLngLat([item.lng, item.lat])
+            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML('<strong>' + (item.title || '') + '</strong>'))
+            .addTo(map);
+        }
+      });
+    }
+  });
+</script>
+{% endraw %}
+
+<!-- Inject Jekyll collection items as a JS variable -->
+<script>
+  window.JEKYLL_COLLECTION_ITEMS = [
+  {% for post in site.collections.places.docs %}
+    {
+      title: {{ post.title | jsonify }},
+      url: {{ post.url | absolute_url | jsonify }},
+      lat: {{ post.lat | default: 'null' }},
+      lng: {{ post.lng | default: 'null' }}
+    }{% if forloop.last == false %},{% endif %}
+  {% endfor %}
+  ];
+</script>
